@@ -55,9 +55,9 @@ function NavItem({
 
   return (
     <Link href={href}>
-      <a 
+      <div 
         className={cn(
-          "flex items-center px-3 py-2 text-sm font-medium rounded-md",
+          "flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer",
           isActive 
             ? "bg-primary text-white" 
             : "text-slate-700 hover:bg-slate-100"
@@ -71,7 +71,7 @@ function NavItem({
             Active
           </span>
         )}
-      </a>
+      </div>
     </Link>
   );
 }
@@ -114,8 +114,8 @@ export function Sidebar({ currentPath }: SidebarProps) {
       
       <aside 
         className={cn(
-          "w-full md:w-64 bg-white border-r border-slate-200 flex flex-col md:h-screen md:sticky md:top-0",
-          "fixed inset-y-0 left-0 z-40 w-64 transform transition-transform duration-300 ease-in-out md:transform-none",
+          "w-full md:w-64 bg-white border-r border-slate-200 flex flex-col md:h-screen",
+          "fixed inset-y-0 left-0 z-40 w-64 transform transition-transform duration-300 ease-in-out md:transform-none md:static",
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
@@ -222,22 +222,22 @@ export function Sidebar({ currentPath }: SidebarProps) {
           <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Documentation</h3>
           <div className="space-y-1">
             <Link href="#">
-              <a 
-                className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-slate-700 hover:bg-slate-100"
+              <div 
+                className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-slate-700 hover:bg-slate-100 cursor-pointer"
                 onClick={closeMobileMenu}
               >
                 <ExternalLink className="mr-3 h-5 w-5 text-slate-500" />
                 API Documentation
-              </a>
+              </div>
             </Link>
             <Link href="#">
-              <a 
-                className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-slate-700 hover:bg-slate-100"
+              <div 
+                className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-slate-700 hover:bg-slate-100 cursor-pointer"
                 onClick={closeMobileMenu}
               >
                 <BookOpen className="mr-3 h-5 w-5 text-slate-500" />
                 User Guide
-              </a>
+              </div>
             </Link>
           </div>
         </div>

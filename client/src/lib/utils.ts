@@ -21,9 +21,3 @@ export const demoPagesPaths = ['/nexus', '/one-click-tools'];
 export function isDemoPage(path: string): boolean {
   return demoPagesPaths.includes(path);
 }
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
- 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
