@@ -4,6 +4,7 @@ import { ProjectList } from "@/components/ui/project-list";
 import { IntegrationList } from "@/components/ui/integration-list";
 import { AnalyticsOverview } from "@/components/ui/analytics-overview";
 import { DemoPages } from "@/components/ui/demo-pages";
+import { useAuth } from "@/hooks/use-auth";
 import { 
   dashboardStats, 
   recentProjects, 
@@ -11,13 +12,16 @@ import {
 } from "@/data/mock-data";
 
 export default function Home() {
+  const { user } = useAuth();
+  const username = user?.username || "User";
+
   return (
     <Dashboard>
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-primary to-indigo-700 rounded-xl p-6 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-white mb-2">Welcome back, Sarah!</h2>
+            <h2 className="text-xl font-semibold text-white mb-2">Welcome back, {username}!</h2>
             <p className="text-indigo-100">Your dashboard is 65% complete. Continue where you left off.</p>
           </div>
           <div className="mt-4 md:mt-0">
