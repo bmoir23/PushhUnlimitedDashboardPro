@@ -20,9 +20,10 @@ createRoot(document.getElementById("root")!).render(
     domain={auth0Domain}
     clientId={auth0ClientId}
     authorizationParams={{
-      redirect_uri: window.location.origin,
+      redirect_uri: `${window.location.origin}/auth`,
       audience: auth0Audience,
     }}
+    cacheLocation="localstorage"
   >
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="system" storageKey="pushh-theme">

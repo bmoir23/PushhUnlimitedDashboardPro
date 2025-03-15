@@ -20,9 +20,10 @@ export function SocialLogins({ className = "" }: SocialLoginProps) {
       await loginWithRedirect({
         authorizationParams: {
           connection,
+          redirect_uri: `${window.location.origin}/auth`,
         },
         appState: {
-          returnTo: window.location.origin,
+          returnTo: "/",
         },
       });
     } catch (error) {
