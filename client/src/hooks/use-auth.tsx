@@ -1,144 +1,156 @@
-import { createContext, ReactNode, useContext, useEffect, useState } from "react";
-import { useQuery, useMutation, UseMutationResult } from "@tanstack/react-query";
-import { User } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase";
-import { useToast } from "@/hooks/use-toast";
+import { createContext, useContext, ReactNode, useEffect, useState } from "react";
+import { useAuth0 } from "@auth0/auth0-react";
+import { useToast } from "./use-toast";
 
-type AuthContextType = {
-  user: User | null;
-  isLoading: boolean;
-  error: Error | null;
-  loginMutation: UseMutationResult<User | null, Error, LoginData>;
-  logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<User | null, Error, RegisterData>;
-  hasRole: (role: string) => boolean;
-  hasPlan: (plan: string) => boolean;
-};
+// Define user role types
+export type UserRole = "free" | "basic" | "premium" | "enterprise" | "admin" | "superadmin";
 
-interface TurnstileData {
-  turnstileToken: string;
+// Interface for user metadata that includes plan and role information
+export interface UserMetadata {
+  plan?: string;
+  roles?: UserRole[];
 }
 
-type LoginData = {
-  email: string;
-  password: string;
-} & Partial<TurnstileData>;
+// Extended user interface that includes metadata
+export interface ExtendedUser {
+  email?: string;
+  name?: string;
+  picture?: string;
+  sub?: string;
+  user_metadata?: UserMetadata;
+  [key: string]: any;
+}
 
-type RegisterData = {
-  email: string;
-  password: string;
-  metadata?: {
-    username?: string;
-    plan?: string;
-    roles?: string[];
-  };
-} & Partial<TurnstileData>;
+// Create the auth context with default values
+interface AuthContextType {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  user: ExtendedUser | null;
+  userRoles: UserRole[];
+  userPlan: string | undefined;
+  loginWithRedirect: (options?: any) => Promise<void>;
+  logout: () => Promise<void>;
+  getAccessTokenSilently: () => Promise<string>;
+  hasRole: (role: UserRole) => boolean;
+  hasPlan: (plan: string) => boolean;
+  isSuperAdmin: () => boolean;
+  isAdmin: () => boolean;
+  hasPaidAccess: () => boolean;
+}
 
-export const AuthContext = createContext<AuthContextType | null>(null);
+// Create a context with default values
+const AuthContext = createContext<AuthContextType>({
+  isAuthenticated: false,
+  isLoading: true,
+  user: null,
+  userRoles: [],
+  userPlan: undefined,
+  loginWithRedirect: async () => { 
+    console.log("Auth not initialized: loginWithRedirect");
+  },
+  logout: async () => { 
+    console.log("Auth not initialized: logout");
+  },
+  getAccessTokenSilently: async () => {
+    console.log("Auth not initialized: getAccessTokenSilently");
+    return "";
+  },
+  hasRole: () => false,
+  hasPlan: () => false,
+  isSuperAdmin: () => false,
+  isAdmin: () => false,
+  hasPaidAccess: () => false
+});
 
+// Provider component that wraps the app
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [userRoles, setUserRoles] = useState<UserRole[]>([]);
+  const [userPlan, setUserPlan] = useState<string | undefined>(undefined);
+  
+  const {
+    isAuthenticated,
+    isLoading,
+    user,
+    loginWithRedirect,
+    logout,
+    getAccessTokenSilently,
+    error
+  } = useAuth0();
 
+  // Handle auth errors
   useEffect(() => {
-    // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Listen for changes on auth state (signed in, signed out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const loginMutation = useMutation({
-    mutationFn: async ({ email, password, turnstileToken }: LoginData) => {
-      const { data: { user }, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-      return user;
-    },
-    onError: (error: Error) => {
+    if (error) {
       toast({
-        title: "Login failed",
+        title: "Authentication Error",
         description: error.message,
         variant: "destructive",
       });
-    },
-  });
+    }
+  }, [error, toast]);
 
-  const registerMutation = useMutation({
-    mutationFn: async ({ email, password, metadata, turnstileToken }: RegisterData) => {
-      const { data: { user }, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: metadata,
-        },
-      });
+  // Extract user roles and plan from metadata when user changes
+  useEffect(() => {
+    if (user && user.user_metadata) {
+      // Extract roles
+      const roles = user.user_metadata.roles || [];
+      setUserRoles(roles as UserRole[]);
+      
+      // Extract plan
+      const plan = user.user_metadata.plan;
+      setUserPlan(plan);
+    } else {
+      setUserRoles([]);
+      setUserPlan(undefined);
+    }
+  }, [user]);
 
-      if (error) throw error;
-      return user;
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Registration failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Logout failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const hasRole = (role: string) => {
-    return user?.user_metadata?.roles?.includes(role) ?? false;
+  // Utility functions
+  const hasRole = (role: UserRole) => {
+    return userRoles.includes(role);
   };
 
   const hasPlan = (plan: string) => {
-    return user?.user_metadata?.plan === plan;
+    return userPlan === plan;
+  };
+
+  const isSuperAdmin = () => {
+    return hasRole("superadmin");
+  };
+
+  const isAdmin = () => {
+    return hasRole("admin") || isSuperAdmin();
+  };
+
+  const hasPaidAccess = () => {
+    return Boolean(userPlan && ["basic", "premium", "enterprise"].includes(userPlan));
+  };
+
+  // Provide the auth context value
+  const contextValue = {
+    isAuthenticated,
+    isLoading,
+    user: user as ExtendedUser | null,
+    userRoles,
+    userPlan,
+    loginWithRedirect,
+    logout,
+    getAccessTokenSilently,
+    hasRole,
+    hasPlan,
+    isSuperAdmin,
+    isAdmin,
+    hasPaidAccess
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading: loading,
-        error,
-        loginMutation,
-        logoutMutation,
-        registerMutation,
-        hasRole,
-        hasPlan,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
 }
 
+// Hook to use the auth context
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {

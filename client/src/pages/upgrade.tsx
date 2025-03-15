@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { CheckCircle, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dashboard } from "@/components/ui/dashboard";
-import { useAuth } from "@/lib/auth/use-auth";
+import { useAuth } from "@/hooks/use-auth";
 
 interface PlanFeature {
   title: string;

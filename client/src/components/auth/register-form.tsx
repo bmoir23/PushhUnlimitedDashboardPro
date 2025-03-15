@@ -73,7 +73,7 @@ export function RegisterForm() {
           id="username"
           placeholder="Choose a username"
           {...register("username")}
-          error={errors.username?.message}
+          className={errors.username ? "border-red-500" : ""}
         />
         {errors.username && (
           <p className="text-sm text-red-500">{errors.username.message}</p>
@@ -87,7 +87,7 @@ export function RegisterForm() {
           type="email"
           placeholder="Enter your email"
           {...register("email")}
-          error={errors.email?.message}
+          className={errors.email ? "border-red-500" : ""}
         />
         {errors.email && (
           <p className="text-sm text-red-500">{errors.email.message}</p>
@@ -101,7 +101,7 @@ export function RegisterForm() {
           type="password"
           placeholder="Create a password"
           {...register("password")}
-          error={errors.password?.message}
+          className={errors.password ? "border-red-500" : ""}
         />
         {errors.password && (
           <p className="text-sm text-red-500">{errors.password.message}</p>

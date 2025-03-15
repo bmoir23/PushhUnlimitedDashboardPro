@@ -1,11 +1,12 @@
+import { Redirect, Route, RouteProps } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
-import { Redirect, Route } from "wouter";
+import { UserRole } from "@/hooks/use-auth";
 
 interface ProtectedRouteProps {
   path: string;
-  component: React.ComponentType;
-  requiredRoles?: string[];
+  component: React.ComponentType<any>;
+  requiredRoles?: UserRole[];
   requiredPlan?: string;
 }
 
@@ -15,53 +16,41 @@ export function ProtectedRoute({
   requiredRoles,
   requiredPlan,
 }: ProtectedRouteProps) {
-  const { user, isLoading, hasRole, hasPlan } = useAuth();
+  const { isAuthenticated, isLoading, hasRole, hasPlan } = useAuth();
 
-  // Show loading spinner while checking authentication
-  if (isLoading) {
-    return (
-      <Route path={path}>
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-border" />
-        </div>
-      </Route>
-    );
-  }
-
-  // Redirect to login if not authenticated
-  if (!user) {
-    return (
-      <Route path={path}>
-        <Redirect to="/auth" />
-      </Route>
-    );
-  }
-
-  // Check for required roles
-  if (requiredRoles && requiredRoles.length > 0) {
-    const hasRequiredRole = requiredRoles.some((role) => hasRole(role));
-    if (!hasRequiredRole) {
-      return (
-        <Route path={path}>
-          <Redirect to="/unauthorized" />
-        </Route>
-      );
-    }
-  }
-
-  // Check for required plan
-  if (requiredPlan && !hasPlan(requiredPlan)) {
-    return (
-      <Route path={path}>
-        <Redirect to="/upgrade" />
-      </Route>
-    );
-  }
-
-  // If all checks pass, render the component
   return (
     <Route path={path}>
-      <Component />
+      {(params) => {
+        // Show loading state while checking authentication
+        if (isLoading) {
+          return (
+            <div className="flex items-center justify-center min-h-screen">
+              <Loader2 className="h-8 w-8 animate-spin text-border" />
+            </div>
+          );
+        }
+
+        // Check if user is authenticated
+        if (!isAuthenticated) {
+          return <Redirect to="/auth" />;
+        }
+
+        // Check role requirement if specified
+        if (requiredRoles && requiredRoles.length > 0) {
+          const hasRequiredRole = requiredRoles.some(role => hasRole(role));
+          if (!hasRequiredRole) {
+            return <Redirect to="/unauthorized" />;
+          }
+        }
+
+        // Check plan requirement if specified
+        if (requiredPlan && !hasPlan(requiredPlan)) {
+          return <Redirect to="/upgrade" />;
+        }
+
+        // User meets all requirements, render the component
+        return <Component params={params} />;
+      }}
     </Route>
   );
 }

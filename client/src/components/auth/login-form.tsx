@@ -72,7 +72,7 @@ export function LoginForm() {
           id="username"
           placeholder="Enter your username"
           {...register("username")}
-          error={errors.username?.message}
+          className={errors.username ? "border-red-500" : ""}
         />
         {errors.username && (
           <p className="text-sm text-red-500">{errors.username.message}</p>
@@ -86,7 +86,7 @@ export function LoginForm() {
           type="password"
           placeholder="Enter your password"
           {...register("password")}
-          error={errors.password?.message}
+          className={errors.password ? "border-red-500" : ""}
         />
         {errors.password && (
           <p className="text-sm text-red-500">{errors.password.message}</p>

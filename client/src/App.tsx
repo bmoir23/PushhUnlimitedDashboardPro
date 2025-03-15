@@ -1,21 +1,22 @@
 
 import { Switch, Route } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "react-hot-toast";
-import { ErrorBoundary } from "./components/error-boundary";
-import { AuthProvider } from "./lib/auth/auth-provider";
-import { ProtectedRoute } from "./lib/auth/protected-route";
+import { Toaster } from "@/components/ui/toaster";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { Auth0Provider } from "@auth0/auth0-react";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/lib/protected-route";
 
 // Pages
 import Home from "./pages/home";
 import Nexus from "./pages/nexus";
 import OneClickTools from "./pages/one-click-tools";
-import AuthPage from "./pages/auth";
+import AuthPage from "./pages/auth-page";
 import Unauthorized from "./pages/unauthorized";
 import Upgrade from "./pages/upgrade";
 import UserManagement from "./pages/admin/user-management";
 import NotFound from "./pages/not-found";
-import { queryClient } from "./lib/query-client";
+import { queryClient } from "@/lib/queryClient";
 
 function Router() {
   return (
@@ -44,14 +45,27 @@ function Router() {
 }
 
 function App() {
+  // Get redirect URI from window location
+  const redirectUri = typeof window !== 'undefined' 
+    ? window.location.origin 
+    : 'http://localhost:5000';
+
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ErrorBoundary>
-          <Router />
-        </ErrorBoundary>
-        <Toaster />
-      </AuthProvider>
+      <Auth0Provider
+        domain={import.meta.env.VITE_AUTH0_DOMAIN || ''}
+        clientId={import.meta.env.VITE_AUTH0_CLIENT_ID || ''}
+        authorizationParams={{
+          redirect_uri: redirectUri,
+        }}
+      >
+        <AuthProvider>
+          <ErrorBoundary>
+            <Router />
+          </ErrorBoundary>
+          <Toaster />
+        </AuthProvider>
+      </Auth0Provider>
     </QueryClientProvider>
   );
 }

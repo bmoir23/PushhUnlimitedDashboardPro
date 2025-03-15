@@ -1,84 +1,74 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { Turnstile } from "@marsidev/react-turnstile";
-
-const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-
-const registerSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  username: z.string().min(3, "Username must be at least 3 characters"),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
-type RegisterFormValues = z.infer<typeof registerSchema>;
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
-  const { user, loginMutation, registerMutation } = useAuth();
+  const { isAuthenticated, isLoading, loginWithRedirect } = useAuth();
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileVerified, setTurnstileVerified] = useState(false);
+  const [verifyingTurnstile, setVerifyingTurnstile] = useState(false);
+  const { toast } = useToast();
 
+  // Redirect if already authenticated
   useEffect(() => {
-    if (user) {
+    if (isAuthenticated) {
       setLocation("/");
     }
-  }, [user, setLocation]);
+  }, [isAuthenticated, setLocation]);
 
-  const loginForm = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
-
-  const registerForm = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-      username: "",
-    },
-  });
-
-  const onLoginSubmit = (data: LoginFormValues) => {
-    loginMutation.mutate({
-      ...data,
-      turnstileToken: turnstileToken || undefined,
-    });
-    setTurnstileToken(null);
+  const verifyTurnstileToken = async (token: string) => {
+    try {
+      setVerifyingTurnstile(true);
+      const response = await apiRequest("POST", "/api/verify-turnstile", { token });
+      const data = await response.json();
+      
+      if (data.success) {
+        setTurnstileVerified(true);
+        return true;
+      } else {
+        toast({
+          title: "Verification Failed",
+          description: "Security check failed. Please try again.",
+          variant: "destructive",
+        });
+        return false;
+      }
+    } catch (error) {
+      console.error("Error verifying Turnstile token:", error);
+      toast({
+        title: "Verification Error",
+        description: "An error occurred during verification. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setVerifyingTurnstile(false);
+    }
   };
 
-  const onRegisterSubmit = (data: RegisterFormValues) => {
-    registerMutation.mutate({
-      email: data.email,
-      password: data.password,
-      metadata: {
-        username: data.username,
-        roles: ["free"],
-        plan: "free",
-      },
-      turnstileToken: turnstileToken || undefined,
-    });
-    setTurnstileToken(null);
+  const handleLogin = async () => {
+    if (turnstileToken) {
+      if (!turnstileVerified) {
+        const verified = await verifyTurnstileToken(turnstileToken);
+        if (!verified) return;
+      }
+      
+      await loginWithRedirect({
+        appState: {
+          turnstileToken
+        }
+      });
+    }
+  };
+
+  const handleTurnstileSuccess = (token: string) => {
+    setTurnstileToken(token);
   };
 
   return (
@@ -104,132 +94,55 @@ export default function AuthPage() {
               Welcome to Pushh Platform
             </h1>
             <p className="text-sm text-muted-foreground">
-              Enter your details to get started
+              Sign in to get started
             </p>
           </div>
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Register</TabsTrigger>
-            </TabsList>
-            <TabsContent value="login">
-              <Form {...loginForm}>
-                <form
-                  onSubmit={loginForm.handleSubmit(onLoginSubmit)}
-                  className="space-y-4"
-                >
-                  <FormField
-                    control={loginForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="your.email@example.com"
-                            type="email"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={loginForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="py-2">
-                    <Turnstile
-                      siteKey={import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY}
-                      onSuccess={setTurnstileToken}
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={loginMutation.isPending}
-                  >
-                    {loginMutation.isPending ? "Signing in..." : "Sign in"}
-                  </Button>
-                </form>
-              </Form>
-            </TabsContent>
-            <TabsContent value="register">
-              <Form {...registerForm}>
-                <form
-                  onSubmit={registerForm.handleSubmit(onRegisterSubmit)}
-                  className="space-y-4"
-                >
-                  <FormField
-                    control={registerForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="your.email@example.com"
-                            type="email"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={registerForm.control}
-                    name="username"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Username</FormLabel>
-                        <FormControl>
-                          <Input placeholder="johndoe" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={registerForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="py-2">
-                    <Turnstile
-                      siteKey={import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY}
-                      onSuccess={setTurnstileToken}
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={registerMutation.isPending}
-                  >
-                    {registerMutation.isPending ? "Creating account..." : "Create account"}
-                  </Button>
-                </form>
-              </Form>
-            </TabsContent>
-          </Tabs>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Authentication</CardTitle>
+              <CardDescription>
+                Secure login with Auth0 and Cloudflare Turnstile
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="py-2 flex justify-center">
+                <Turnstile
+                  siteKey={import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY}
+                  onSuccess={handleTurnstileSuccess}
+                />
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button
+                className="w-full"
+                onClick={handleLogin}
+                disabled={isLoading || verifyingTurnstile || (!turnstileVerified && !turnstileToken)}
+              >
+                {isLoading 
+                  ? "Signing in..." 
+                  : verifyingTurnstile 
+                    ? "Verifying..." 
+                    : turnstileVerified 
+                      ? "Sign in with Auth0" 
+                      : turnstileToken 
+                        ? "Verify and Sign in" 
+                        : "Complete security check"}
+              </Button>
+            </CardFooter>
+          </Card>
+          
+          <p className="text-center text-sm text-muted-foreground">
+            By clicking continue, you agree to our{" "}
+            <a href="#" className="underline underline-offset-4 hover:text-primary">
+              Terms of Service
+            </a>{" "}
+            and{" "}
+            <a href="#" className="underline underline-offset-4 hover:text-primary">
+              Privacy Policy
+            </a>
+            .
+          </p>
         </div>
       </div>
     </div>
