@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { FaGoogle, FaGithub, FaLinkedin, FaTwitter } from "react-icons/fa";
+import { FaGoogle, FaLinkedin } from "react-icons/fa";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
@@ -55,20 +55,6 @@ export function SocialLogins({ className = "" }: SocialLoginProps) {
       <Button
         variant="outline"
         type="button"
-        onClick={() => handleSocialLogin("github")}
-        disabled={!!isLoading}
-        className="w-full"
-      >
-        {isLoading === "github" ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
-          <FaGithub className="mr-2 h-4 w-4" />
-        )}
-        Continue with GitHub
-      </Button>
-      <Button
-        variant="outline"
-        type="button"
         onClick={() => handleSocialLogin("linkedin")}
         disabled={!!isLoading}
         className="w-full"
@@ -79,20 +65,6 @@ export function SocialLogins({ className = "" }: SocialLoginProps) {
           <FaLinkedin className="mr-2 h-4 w-4" />
         )}
         Continue with LinkedIn
-      </Button>
-      <Button
-        variant="outline"
-        type="button"
-        onClick={() => handleSocialLogin("twitter")}
-        disabled={!!isLoading}
-        className="w-full"
-      >
-        {isLoading === "twitter" ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
-          <FaTwitter className="mr-2 h-4 w-4" />
-        )}
-        Continue with Twitter
       </Button>
     </div>
   );
