@@ -64,6 +64,7 @@ export default function AuthPage() {
       ...data,
       turnstileToken: turnstileToken || undefined,
     });
+    setTurnstileToken(null);
   };
 
   const onRegisterSubmit = (data: RegisterFormValues) => {
@@ -77,6 +78,7 @@ export default function AuthPage() {
       },
       turnstileToken: turnstileToken || undefined,
     });
+    setTurnstileToken(null);
   };
 
   return (
