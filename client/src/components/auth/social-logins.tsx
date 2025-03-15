@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { getAuthCallbackUrl } from "@/lib/utils";
 
 interface SocialLoginProps {
   className?: string;
@@ -20,7 +21,6 @@ export function SocialLogins({ className = "" }: SocialLoginProps) {
       await loginWithRedirect({
         authorizationParams: {
           connection,
-          redirect_uri: `${window.location.origin}/auth`,
         },
         appState: {
           returnTo: "/",

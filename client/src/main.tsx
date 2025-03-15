@@ -6,6 +6,7 @@ import "./index.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/toaster";
+import { getAuthCallbackUrl } from "@/lib/utils";
 
 // Initialize the query client
 const queryClient = new QueryClient();
@@ -20,7 +21,7 @@ createRoot(document.getElementById("root")!).render(
     domain={auth0Domain}
     clientId={auth0ClientId}
     authorizationParams={{
-      redirect_uri: `${window.location.origin}/auth`,
+      redirect_uri: getAuthCallbackUrl(),
       audience: auth0Audience,
     }}
     cacheLocation="localstorage"
