@@ -1,13 +1,11 @@
-import { ReactNode } from "react";
-import { useAuth } from "@/lib/auth/use-auth";
-import { UserRole } from "@/lib/auth/use-auth";
-import { Button } from "@/components/ui/button";
-import { useLocation } from "wouter";
-import { LockKeyhole } from "lucide-react";
+import { ReactNode } from 'react';
+import { useAuth } from '@/hooks/use-auth';
+import { Button } from '@/components/ui/button';
+import { Link } from 'wouter';
 
 interface RestrictedFeatureProps {
   children: ReactNode;
-  requiredRoles?: UserRole[];
+  requiredRoles?: string[];
   requiredPlan?: string;
   fallback?: ReactNode;
   showUpgrade?: boolean;
@@ -15,54 +13,69 @@ interface RestrictedFeatureProps {
 
 export function RestrictedFeature({
   children,
-  requiredRoles = [],
+  requiredRoles,
   requiredPlan,
   fallback,
   showUpgrade = true,
 }: RestrictedFeatureProps) {
-  const { hasRole, hasPlan, isLoading } = useAuth();
-  const [, navigate] = useLocation();
+  const { user, hasRole, hasPlan } = useAuth();
 
-  // If still loading auth state, don't render anything
-  if (isLoading) {
-    return null;
+  // If not authenticated, show fallback or default message
+  if (!user) {
+    return fallback ? (
+      <>{fallback}</>
+    ) : (
+      <RestrictedFeatureFallback 
+        message="Please log in to access this feature" 
+        showUpgrade={false} 
+      />
+    );
   }
 
-  // Check if user has required role
-  const hasRequiredRole = requiredRoles.length === 0 || requiredRoles.some(role => hasRole(role));
-  
-  // Check if user has required plan
-  const hasRequiredPlan = !requiredPlan || hasPlan(requiredPlan);
-  
-  // If user has access, render the children
-  if (hasRequiredRole && hasRequiredPlan) {
-    return <>{children}</>;
+  // Check for required roles
+  if (requiredRoles && requiredRoles.length > 0) {
+    const hasRequiredRole = requiredRoles.some((role) => hasRole(role));
+    if (!hasRequiredRole) {
+      return fallback ? (
+        <>{fallback}</>
+      ) : (
+        <RestrictedFeatureFallback 
+          message="You don't have permission to access this feature" 
+          showUpgrade={showUpgrade} 
+        />
+      );
+    }
   }
-  
-  // If fallback is provided, render that
-  if (fallback) {
-    return <>{fallback}</>;
+
+  // Check for required plan
+  if (requiredPlan && !hasPlan(requiredPlan)) {
+    return fallback ? (
+      <>{fallback}</>
+    ) : (
+      <RestrictedFeatureFallback 
+        message={`This feature requires ${requiredPlan} plan or higher`} 
+        showUpgrade={showUpgrade} 
+      />
+    );
   }
-  
-  // Otherwise render a default locked message with upgrade button
+
+  // If all checks pass, render the children
+  return <>{children}</>;
+}
+
+function RestrictedFeatureFallback({
+  message,
+  showUpgrade,
+}: {
+  message: string;
+  showUpgrade: boolean;
+}) {
   return (
-    <div className="border rounded-md p-6 text-center bg-muted/30">
-      <div className="bg-primary/10 mx-auto w-12 h-12 flex items-center justify-center rounded-full mb-4">
-        <LockKeyhole className="h-6 w-6 text-primary" />
-      </div>
-      <h3 className="text-lg font-medium mb-2">Feature Restricted</h3>
-      <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
-        {requiredPlan 
-          ? `This feature is available on the ${requiredPlan} plan or higher.` 
-          : "You don't have permission to access this feature."}
-      </p>
+    <div className="flex flex-col items-center p-6 space-y-4 text-center border rounded-lg bg-background/50">
+      <p className="text-sm text-muted-foreground">{message}</p>
       {showUpgrade && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate("/upgrade")}
-        >
-          View Plans
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/upgrade">Upgrade Plan</Link>
         </Button>
       )}
     </div>

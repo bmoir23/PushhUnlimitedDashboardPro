@@ -1,5 +1,4 @@
-import { useAuth0 } from "@auth0/auth0-react";
-import { useState, useEffect } from "react";
+import { createContext, useContext, useState, ReactNode } from "react";
 
 // Define user role types
 export type UserRole = "free" | "basic" | "premium" | "enterprise" | "admin" | "superadmin";
@@ -20,89 +19,120 @@ export interface ExtendedUser {
   [key: string]: any;
 }
 
-// Custom auth hook that extends Auth0's useAuth0 hook
-export function useAuth() {
-  const {
-    isAuthenticated,
-    isLoading,
-    user,
-    loginWithRedirect,
-    logout,
-    getAccessTokenSilently,
-  } = useAuth0();
-  
+// Create the auth context with default values
+interface AuthContextType {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  user: ExtendedUser | null;
+  userRoles: UserRole[];
+  userPlan: string | undefined;
+  loginWithRedirect: (options?: any) => Promise<void>;
+  logout: () => Promise<void>;
+  getAccessTokenSilently: () => Promise<string>;
+  hasRole: (role: UserRole) => boolean;
+  hasPlan: (plan: string) => boolean;
+  isSuperAdmin: () => boolean;
+  isAdmin: () => boolean;
+  hasPaidAccess: () => boolean;
+}
+
+// Create a context with default values
+const AuthContext = createContext<AuthContextType>({
+  isAuthenticated: false,
+  isLoading: false,
+  user: null,
+  userRoles: [],
+  userPlan: undefined,
+  loginWithRedirect: async () => { 
+    console.log("Auth not initialized: loginWithRedirect");
+  },
+  logout: async () => { 
+    console.log("Auth not initialized: logout");
+  },
+  getAccessTokenSilently: async () => {
+    console.log("Auth not initialized: getAccessTokenSilently");
+    return "";
+  },
+  hasRole: () => false,
+  hasPlan: () => false,
+  isSuperAdmin: () => false,
+  isAdmin: () => false,
+  hasPaidAccess: () => false
+});
+
+// Provider component that wraps the app
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState<ExtendedUser | null>(null);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [userPlan, setUserPlan] = useState<string | undefined>(undefined);
-  const [extendedUser, setExtendedUser] = useState<ExtendedUser | null>(null);
-  const [isLoadingUserData, setIsLoadingUserData] = useState(false);
 
-  // Fetch user metadata and roles when authenticated
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      setIsLoadingUserData(true);
-      
-      // Get user metadata and roles from Auth0
-      const getUserData = async () => {
-        try {
-          // Here we would typically make an API call to fetch detailed user data
-          // For now, we'll extract roles from the user object if available
-          const metadata = user.user_metadata as UserMetadata || {};
-          const roles = metadata.roles || [];
-          const plan = metadata.plan;
-          
-          setUserRoles(roles);
-          setUserPlan(plan);
-          setExtendedUser({
-            ...user,
-            user_metadata: {
-              plan,
-              roles
-            }
-          });
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-        } finally {
-          setIsLoadingUserData(false);
+  // Mock login function (replace with actual Auth0 login)
+  const loginWithRedirect = async (options?: any) => {
+    setIsLoading(true);
+    
+    // Simulate login
+    setTimeout(() => {
+      setUser({
+        name: "Demo User",
+        email: "demo@example.com",
+        picture: "",
+        user_metadata: {
+          roles: ["admin"],
+          plan: "premium"
         }
-      };
+      });
+      setUserRoles(["admin"]);
+      setUserPlan("premium");
+      setIsAuthenticated(true);
+      setIsLoading(false);
+    }, 1000);
+  };
 
-      getUserData();
-    }
-  }, [isAuthenticated, user]);
+  // Mock logout function
+  const logout = async () => {
+    setUser(null);
+    setUserRoles([]);
+    setUserPlan(undefined);
+    setIsAuthenticated(false);
+  };
 
-  // Check if user has a specific role
+  // Mock token function
+  const getAccessTokenSilently = async () => {
+    return "mock-token";
+  };
+
+  // Utility functions
   const hasRole = (role: UserRole) => {
     return userRoles.includes(role);
   };
 
-  // Check if user is on a specific plan
   const hasPlan = (plan: string) => {
     return userPlan === plan;
   };
 
-  // Check if user is a super admin
   const isSuperAdmin = () => {
     return hasRole("superadmin");
   };
 
-  // Check if user is an admin
   const isAdmin = () => {
     return hasRole("admin") || isSuperAdmin();
   };
 
-  // Check if user has access to paid features
   const hasPaidAccess = () => {
-    return userPlan && ["basic", "premium", "enterprise"].includes(userPlan);
+    return Boolean(userPlan && ["basic", "premium", "enterprise"].includes(userPlan));
   };
 
-  return {
+  // Provide the auth context value
+  const contextValue = {
     isAuthenticated,
-    isLoading: isLoading || isLoadingUserData,
-    user: extendedUser,
+    isLoading,
+    user,
     userRoles,
     userPlan,
     loginWithRedirect,
-    logout: () => logout({ logoutParams: { returnTo: window.location.origin } }),
+    logout,
     getAccessTokenSilently,
     hasRole,
     hasPlan,
@@ -110,4 +140,19 @@ export function useAuth() {
     isAdmin,
     hasPaidAccess
   };
+
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+// Hook to use the auth context
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 }

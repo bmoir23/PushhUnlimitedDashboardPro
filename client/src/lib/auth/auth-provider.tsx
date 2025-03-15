@@ -6,12 +6,13 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const domain = import.meta.env.VITE_AUTH0_DOMAIN;
-  const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
+  const domain = import.meta.env.VITE_AUTH0_DOMAIN as string;
+  const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID as string;
   const redirectUri = window.location.origin;
 
+  // In development, we might not have Auth0 credentials
   if (!(domain && clientId)) {
-    console.error("Auth0 credentials not found");
+    console.warn("Auth0 credentials not found");
     return <>{children}</>;
   }
 

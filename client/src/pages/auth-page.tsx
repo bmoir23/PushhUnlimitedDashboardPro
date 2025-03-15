@@ -1,39 +1,90 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/lib/auth/use-auth";
+import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, ArrowRight, CheckCircle } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { UserRole, UserPlan } from "@shared/schema";
+
+// Create login schema
+const loginSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+});
+
+// Create registration schema
+const registerSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  roles: z.array(z.enum(["free", "basic", "premium", "enterprise", "admin", "superadmin"] as const)).default(["free"]),
+  plan: z.enum(["free", "basic", "premium", "enterprise"] as const).default("free"),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
+type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function AuthPage() {
-  const { isAuthenticated, isLoading, loginWithRedirect } = useAuth();
+  const { user, isLoading, loginMutation, registerMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<string>("login");
   
   // Redirect to home if already authenticated
   useEffect(() => {
-    if (isAuthenticated && !isLoading) {
+    if (user && !isLoading) {
       setLocation("/");
     }
-  }, [isAuthenticated, isLoading, setLocation]);
+  }, [user, isLoading, setLocation]);
 
-  // Handle login with Auth0
-  const handleLogin = async () => {
-    await loginWithRedirect();
+  // Login form
+  const loginForm = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+    },
+  });
+
+  // Register form
+  const registerForm = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      username: "",
+      email: "",
+      password: "",
+      roles: ["free"] as UserRole[],
+      plan: "free" as UserPlan,
+    },
+  });
+
+  // Handle login submission
+  const onLoginSubmit = (data: LoginFormValues) => {
+    loginMutation.mutate(data);
   };
 
-  // Handle register with Auth0
-  const handleRegister = async () => {
-    await loginWithRedirect({
-      appState: {
-        returnTo: "/onboarding"
-      },
-      authorizationParams: {
-        screen_hint: "signup"
-      }
-    });
+  // Handle registration submission
+  const onRegisterSubmit = (data: RegisterFormValues) => {
+    // Ensure we have properly typed data for the mutation
+    const userData = {
+      ...data,
+      roles: data.roles as UserRole[],
+      plan: data.plan as UserPlan
+    };
+    registerMutation.mutate(userData);
   };
 
   if (isLoading) {
@@ -73,15 +124,51 @@ export default function AuthPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button 
-                    onClick={handleLogin}
-                    className="w-full"
-                  >
-                    Continue with Auth0
-                  </Button>
+                  <Form {...loginForm}>
+                    <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+                      <FormField
+                        control={loginForm.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Username</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter your username" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={loginForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="Enter your password" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button 
+                        type="submit" 
+                        className="w-full"
+                        disabled={loginMutation.isPending}
+                      >
+                        {loginMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Logging in...
+                          </>
+                        ) : "Login"}
+                      </Button>
+                    </form>
+                  </Form>
                 </CardContent>
                 <CardFooter className="flex justify-center text-sm text-muted-foreground">
-                  Protected by Auth0 secure authentication
+                  Secure authentication powered by Pushh
                 </CardFooter>
               </Card>
             </TabsContent>
@@ -95,15 +182,64 @@ export default function AuthPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button 
-                    onClick={handleRegister}
-                    className="w-full"
-                  >
-                    Sign up with Auth0
-                  </Button>
+                  <Form {...registerForm}>
+                    <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
+                      <FormField
+                        control={registerForm.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Username</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Choose a username" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={registerForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input type="email" placeholder="Enter your email" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={registerForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="Create a password" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button 
+                        type="submit" 
+                        className="w-full"
+                        disabled={registerMutation.isPending}
+                      >
+                        {registerMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Creating Account...
+                          </>
+                        ) : "Create Account"}
+                      </Button>
+                    </form>
+                  </Form>
                 </CardContent>
                 <CardFooter className="flex justify-center text-sm text-muted-foreground">
-                  Protected by Auth0 secure authentication
+                  By registering, you agree to our Terms of Service
                 </CardFooter>
               </Card>
             </TabsContent>
