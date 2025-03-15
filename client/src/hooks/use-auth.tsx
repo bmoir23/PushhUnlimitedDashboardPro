@@ -14,12 +14,18 @@ type AuthContextType = {
   error: Error | null;
   loginMutation: UseMutationResult<User, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<User, Error, InsertUser>;
+  registerMutation: UseMutationResult<User, Error, RegisterData>;
   hasRole: (role: string) => boolean;
   hasPlan: (plan: string) => boolean;
 };
 
-type LoginData = Pick<InsertUser, "username" | "password">;
+// Base types for auth operations with turnstile
+interface TurnstileData {
+  turnstileToken: string;
+}
+
+type LoginData = Pick<InsertUser, "username" | "password"> & Partial<TurnstileData>;
+type RegisterData = InsertUser & Partial<TurnstileData>;
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -37,6 +43,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
       const res = await apiRequest("POST", "/api/login", credentials);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to login');
+      }
       return await res.json();
     },
     onSuccess: (user: User) => {
@@ -56,8 +66,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (credentials: InsertUser) => {
-      const res = await apiRequest("POST", "/api/register", credentials);
+    mutationFn: async (credentials: RegisterData) => {
+      // Destructure to remove turnstileToken from credentials for type compatibility
+      const { turnstileToken, ...userData } = credentials;
+      const data = { ...userData, turnstileToken };
+      
+      const res = await apiRequest("POST", "/api/register", data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to register');
+      }
       return await res.json();
     },
     onSuccess: (user: User) => {

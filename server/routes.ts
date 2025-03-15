@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema } from "@shared/schema";
@@ -7,6 +7,7 @@ import { promisify } from "util";
 import session from "express-session";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
+import fetch from "node-fetch";
 
 // Set up crypto functions for password hashing
 const scryptAsync = promisify(scrypt);
@@ -24,11 +25,44 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
+// Verify Cloudflare Turnstile token
+async function verifyTurnstileToken(token: string, ip: string): Promise<boolean> {
+  try {
+    const secretKey = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY;
+    if (!secretKey) {
+      console.error("Cloudflare Turnstile secret key not found");
+      return false;
+    }
+
+    const formData = new URLSearchParams();
+    formData.append('secret', secretKey);
+    formData.append('response', token);
+    formData.append('remoteip', ip);
+
+    const url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+    const result = await fetch(url, {
+      body: formData,
+      method: 'POST',
+    });
+
+    const outcome = await result.json() as { success: boolean, 'error-codes': string[] };
+    
+    if (!outcome.success) {
+      console.error("Turnstile validation failed:", outcome['error-codes']);
+    }
+    
+    return outcome.success;
+  } catch (error) {
+    console.error("Error validating Turnstile token:", error);
+    return false;
+  }
+}
+
 // Initialize passport and session
 function setupAuth(app: Express) {
   // Set up session
   app.use(session({
-    secret: "temporary-secret-key",
+    secret: process.env.SESSION_SECRET || "temporary-secret-key",
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
@@ -73,6 +107,17 @@ function setupAuth(app: Express) {
   // Authentication routes
   app.post("/api/register", async (req: Request, res: Response) => {
     try {
+      // Verify Turnstile token if provided
+      const turnstileToken = req.body.turnstileToken;
+      if (turnstileToken) {
+        const ip = req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '';
+        const isValid = await verifyTurnstileToken(turnstileToken, ip);
+        
+        if (!isValid) {
+          return res.status(400).json({ error: "Security check failed. Please try again." });
+        }
+      }
+
       // Validate input
       const result = insertUserSchema.safeParse(req.body);
       if (!result.success) {
@@ -110,23 +155,39 @@ function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", (req: Request, res: Response, next) => {
-    passport.authenticate("local", (err: any, user: any, info: any) => {
-      if (err) {
-        return next(err);
+  app.post("/api/login", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // Verify Turnstile token if provided
+      const turnstileToken = req.body.turnstileToken;
+      if (turnstileToken) {
+        const ip = req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '';
+        const isValid = await verifyTurnstileToken(turnstileToken, ip);
+        
+        if (!isValid) {
+          return res.status(400).json({ error: "Security check failed. Please try again." });
+        }
       }
-      if (!user) {
-        return res.status(401).json({ error: info?.message || "Authentication failed" });
-      }
-      req.login(user, (err) => {
+
+      passport.authenticate("local", (err: any, user: any, info: any) => {
         if (err) {
           return next(err);
         }
-        // Return user without password
-        const { password, ...userWithoutPassword } = user;
-        return res.json(userWithoutPassword);
-      });
-    })(req, res, next);
+        if (!user) {
+          return res.status(401).json({ error: info?.message || "Authentication failed" });
+        }
+        req.login(user, (err) => {
+          if (err) {
+            return next(err);
+          }
+          // Return user without password
+          const { password, ...userWithoutPassword } = user;
+          return res.json(userWithoutPassword);
+        });
+      })(req, res, next);
+    } catch (error) {
+      console.error("Login error:", error);
+      return res.status(500).json({ error: "Server error during login" });
+    }
   });
 
   app.post("/api/logout", (req: Request, res: Response) => {
