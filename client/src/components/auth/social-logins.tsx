@@ -4,31 +4,37 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { getAuthCallbackUrl } from "@/lib/utils";
 
 interface SocialLoginProps {
   className?: string;
 }
 
 export function SocialLogins({ className = "" }: SocialLoginProps) {
-  const { loginWithRedirect } = useAuth();
+  const { loginWithGoogle, loginWithLinkedIn } = useAuth();
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const handleSocialLogin = async (connection: string) => {
+  const handleGoogleLogin = async () => {
     try {
-      setIsLoading(connection);
-      await loginWithRedirect({
-        authorizationParams: {
-          connection,
-          redirect_uri: getAuthCallbackUrl(),
-        },
-        appState: {
-          returnTo: "/",
-        },
-      });
+      setIsLoading("google-oauth2");
+      await loginWithGoogle();
     } catch (error) {
-      console.error(`${connection} login error:`, error);
+      console.error("Google login error:", error);
+      toast({
+        title: "Login Error",
+        description: error instanceof Error ? error.message : "An error occurred during login. Please try again.",
+        variant: "destructive",
+      });
+      setIsLoading(null);
+    }
+  };
+
+  const handleLinkedInLogin = async () => {
+    try {
+      setIsLoading("linkedin");
+      await loginWithLinkedIn();
+    } catch (error) {
+      console.error("LinkedIn login error:", error);
       toast({
         title: "Login Error",
         description: error instanceof Error ? error.message : "An error occurred during login. Please try again.",
@@ -43,7 +49,7 @@ export function SocialLogins({ className = "" }: SocialLoginProps) {
       <Button
         variant="outline"
         type="button"
-        onClick={() => handleSocialLogin("google-oauth2")}
+        onClick={handleGoogleLogin}
         disabled={!!isLoading}
         className="w-full"
       >
@@ -57,7 +63,7 @@ export function SocialLogins({ className = "" }: SocialLoginProps) {
       <Button
         variant="outline"
         type="button"
-        onClick={() => handleSocialLogin("linkedin")}
+        onClick={handleLinkedInLogin}
         disabled={!!isLoading}
         className="w-full"
       >

@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { getAuthCallbackUrl } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -21,7 +21,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export function EmailPasswordLogin() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { loginWithRedirect } = useAuth();
+  const { loginWithEmail } = useAuth();
   const { toast } = useToast();
 
   const {
@@ -37,16 +37,11 @@ export function EmailPasswordLogin() {
     setError(null);
 
     try {
-      await loginWithRedirect({
-        authorizationParams: {
-          connection: "Username-Password-Authentication",
-          login_hint: data.email,
-          redirect_uri: getAuthCallbackUrl(),
-        },
-        appState: {
-          returnTo: "/",
-        },
-      });
+      const { error } = await loginWithEmail(data.email, data.password);
+      
+      if (error) {
+        throw error;
+      }
     } catch (err) {
       console.error("Email/password login error:", err);
       toast({
@@ -55,6 +50,36 @@ export function EmailPasswordLogin() {
         variant: "destructive",
       });
       setError(err instanceof Error ? err.message : "An error occurred during login");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    // Show a prompt for email
+    const email = prompt("Please enter your email to reset your password");
+    
+    if (!email) return;
+    
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth?reset=true`,
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Password Reset Email Sent",
+        description: "Check your email for a password reset link.",
+      });
+    } catch (err) {
+      console.error("Password reset error:", err);
+      toast({
+        title: "Password Reset Error",
+        description: err instanceof Error ? err.message : "An error occurred. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -101,14 +126,7 @@ export function EmailPasswordLogin() {
           type="button"
           variant="link"
           className="p-0 h-auto text-sm"
-          onClick={() => {
-            loginWithRedirect({
-              authorizationParams: {
-                screen_hint: "forgotPassword",
-                redirect_uri: getAuthCallbackUrl(),
-              },
-            });
-          }}
+          onClick={handleResetPassword}
         >
           Forgot Password?
         </Button>

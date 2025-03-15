@@ -7,9 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, UserMetadata } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { getAuthCallbackUrl } from "@/lib/utils";
 
 const signupSchema = z
   .object({
@@ -28,7 +27,7 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 export function SignupForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { loginWithRedirect } = useAuth();
+  const { signUpWithEmail } = useAuth();
   const { toast } = useToast();
 
   const {
@@ -44,20 +43,19 @@ export function SignupForm() {
     setError(null);
 
     try {
-      await loginWithRedirect({
-        authorizationParams: {
-          screen_hint: "signup",
-          connection: "Username-Password-Authentication",
-          login_hint: data.email,
-          redirect_uri: getAuthCallbackUrl(),
-        },
-        appState: {
-          email: data.email,
-          password: data.password,
-          name: data.name,
-          returnTo: "/",
-        },
-      });
+      // Create metadata with user information
+      const metadata: UserMetadata = {
+        name: data.name,
+        roles: ['free'],
+        plan: 'free'
+      };
+      
+      // Sign up with Supabase
+      const { error } = await signUpWithEmail(data.email, data.password, metadata);
+      
+      if (error) {
+        throw error;
+      }
     } catch (err) {
       console.error("Signup error:", err);
       toast({

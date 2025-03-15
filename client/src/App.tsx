@@ -3,9 +3,9 @@ import { Switch, Route } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
-import { Auth0Provider } from "@auth0/auth0-react";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
+import { ThemeProvider } from "@/components/theme-provider";
 
 // Pages
 import Home from "./pages/home";
@@ -45,44 +45,16 @@ function Router() {
 }
 
 function App() {
-  // Get redirect URI from window location
-  const redirectUri = typeof window !== 'undefined' 
-    ? window.location.origin 
-    : 'http://localhost:5000';
-
-  // Check if Auth0 domain, client ID, and audience are available
-  const auth0Domain = import.meta.env.VITE_AUTH0_DOMAIN;
-  const auth0ClientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
-  const auth0Audience = import.meta.env.VITE_AUTH0_AUDIENCE;
-  
-  // Log for debugging purposes only
-  console.log("Auth0 Configuration:", { 
-    domainAvailable: !!auth0Domain,
-    clientIdAvailable: !!auth0ClientId,
-    audienceAvailable: !!auth0Audience,
-    redirectUri
-  });
-  
   return (
     <QueryClientProvider client={queryClient}>
-      <Auth0Provider
-        domain={auth0Domain || ''}
-        clientId={auth0ClientId || ''}
-        authorizationParams={{
-          redirect_uri: redirectUri,
-          audience: auth0Audience,
-          scope: "openid profile email"
-        }}
-        cacheLocation="localstorage"
-        useRefreshTokens={true}
-      >
+      <ThemeProvider defaultTheme="system" storageKey="pushh-theme">
         <AuthProvider>
           <ErrorBoundary>
             <Router />
           </ErrorBoundary>
           <Toaster />
         </AuthProvider>
-      </Auth0Provider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
