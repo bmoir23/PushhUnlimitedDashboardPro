@@ -1,60 +1,72 @@
-import { createContext, ReactNode, useContext } from "react";
-import {
-  useQuery,
-  useMutation,
-  UseMutationResult,
-} from "@tanstack/react-query";
-import { User, type InsertUser } from "@shared/schema";
-import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
+import { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import { useQuery, useMutation, UseMutationResult } from "@tanstack/react-query";
+import { User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
   error: Error | null;
-  loginMutation: UseMutationResult<User, Error, LoginData>;
+  loginMutation: UseMutationResult<User | null, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<User, Error, RegisterData>;
+  registerMutation: UseMutationResult<User | null, Error, RegisterData>;
   hasRole: (role: string) => boolean;
   hasPlan: (plan: string) => boolean;
 };
 
-// Base types for auth operations with turnstile
 interface TurnstileData {
   turnstileToken: string;
 }
 
-type LoginData = Pick<InsertUser, "username" | "password"> & Partial<TurnstileData>;
-type RegisterData = InsertUser & Partial<TurnstileData>;
+type LoginData = {
+  email: string;
+  password: string;
+} & Partial<TurnstileData>;
+
+type RegisterData = {
+  email: string;
+  password: string;
+  metadata?: {
+    username?: string;
+    plan?: string;
+    roles?: string[];
+  };
+} & Partial<TurnstileData>;
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
-  const {
-    data: user,
-    error,
-    isLoading,
-  } = useQuery<User | null, Error>({
-    queryKey: ["/api/user"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    // Check active sessions and sets the user
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    // Listen for changes on auth state (signed in, signed out, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const loginMutation = useMutation({
-    mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to login');
-      }
-      return await res.json();
-    },
-    onSuccess: (user: User) => {
-      queryClient.setQueryData(["/api/user"], user);
-      toast({
-        title: "Login successful",
-        description: `Welcome back, ${user.username}!`,
+    mutationFn: async ({ email, password, turnstileToken }: LoginData) => {
+      const { data: { user }, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
+
+      if (error) throw error;
+      return user;
     },
     onError: (error: Error) => {
       toast({
@@ -66,24 +78,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (credentials: RegisterData) => {
-      // Destructure to remove turnstileToken from credentials for type compatibility
-      const { turnstileToken, ...userData } = credentials;
-      const data = { ...userData, turnstileToken };
-      
-      const res = await apiRequest("POST", "/api/register", data);
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to register');
-      }
-      return await res.json();
-    },
-    onSuccess: (user: User) => {
-      queryClient.setQueryData(["/api/user"], user);
-      toast({
-        title: "Registration successful",
-        description: `Welcome, ${user.username}!`,
+    mutationFn: async ({ email, password, metadata, turnstileToken }: RegisterData) => {
+      const { data: { user }, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: metadata,
+        },
       });
+
+      if (error) throw error;
+      return user;
     },
     onError: (error: Error) => {
       toast({
@@ -96,14 +101,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/logout");
-    },
-    onSuccess: () => {
-      queryClient.setQueryData(["/api/user"], null);
-      toast({
-        title: "Logged out",
-        description: "You have been successfully logged out.",
-      });
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
     },
     onError: (error: Error) => {
       toast({
@@ -115,41 +114,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const hasRole = (role: string) => {
-    if (!user || !user.roles) return false;
-    return user.roles.includes(role);
+    return user?.user_metadata?.roles?.includes(role) ?? false;
   };
 
   const hasPlan = (plan: string) => {
-    if (!user || !user.plan) return false;
-    
-    // Users with higher plans have access to lower plan features
-    const planHierarchy = {
-      free: 0,
-      basic: 1,
-      premium: 2,
-      enterprise: 3
-    } as const;
-    
-    // Type-safe plan access
-    const getUserPlanLevel = (userPlan: string): number => {
-      if (userPlan === 'free') return planHierarchy.free;
-      if (userPlan === 'basic') return planHierarchy.basic;
-      if (userPlan === 'premium') return planHierarchy.premium;
-      if (userPlan === 'enterprise') return planHierarchy.enterprise;
-      return 0;
-    };
-    
-    const userPlanLevel = getUserPlanLevel(user.plan);
-    const requiredPlanLevel = getUserPlanLevel(plan);
-    
-    return userPlanLevel >= requiredPlanLevel;
+    return user?.user_metadata?.plan === plan;
   };
 
   return (
     <AuthContext.Provider
       value={{
-        user: user || null,
-        isLoading,
+        user,
+        isLoading: loading,
         error,
         loginMutation,
         logoutMutation,
