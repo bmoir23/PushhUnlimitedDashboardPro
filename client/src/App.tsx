@@ -13,6 +13,7 @@ import Upgrade from "@/pages/upgrade";
 import UserManagement from "@/pages/admin/user-management";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { AuthProvider } from "@/hooks/use-auth";
+import { ThemeProvider } from "@/components/theme-provider";
 
 // Function to check if Auth0 secrets are available
 async function checkAuth0Secrets() {
@@ -28,6 +29,32 @@ async function checkAuth0Secrets() {
 
 // Check for Auth0 secrets on startup
 checkAuth0Secrets();
+
+export default function App() {
+  return (
+    <ThemeProvider defaultTheme="light">
+      <AuthProvider>
+        <QueryClientProvider client={queryClient}>
+          <ErrorBoundary>
+            <Switch>
+              <Route path="/" component={Home} />
+              <Route path="/nexus" component={Nexus} />
+              <Route path="/one-click-tools" component={OneClickTools} />
+              <Route path="/auth" component={AuthPage} />
+              <Route path="/unauthorized" component={Unauthorized} />
+              <Route path="/upgrade" component={Upgrade} />
+              <Route path="/admin/user-management">
+                <ProtectedRoute requiredRole="admin" component={UserManagement} />
+              </Route>
+              <Route component={NotFound} />
+            </Switch>
+          </ErrorBoundary>
+          <Toaster />
+        </QueryClientProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}
 
 function Router() {
   return (
