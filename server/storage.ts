@@ -29,45 +29,6 @@ export class MemStorage implements IStorage {
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000 // prune expired entries every 24h
     });
-    
-    // Seed initial admin user if needed
-    this.seedUsers();
-  }
-
-  private async seedUsers() {
-    // Admin user with hashed password "admin123" (SHA-256 hashed for development only)
-    await this.createUserIfNotExists({
-      username: "admin",
-      password: "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
-      email: "admin@example.com",
-      roles: ["admin", "superadmin"],
-      plan: "enterprise"
-    });
-    
-    await this.createUserIfNotExists({
-      username: "user",
-      password: "04f8996da763b7a969b1028ee3007569eaf3a635486ddab211d512c85b9df8fb",
-      email: "user@example.com",
-      roles: ["free"],
-      plan: "free"
-    });
-
-    await this.createUserIfNotExists({
-      username: "premium",
-      password: "74278e6b786c1ebd0e1ad9e3adf007acb5e2b16e5a825bbac35883a155c8863e",
-      email: "premium@example.com",
-      roles: ["premium"],
-      plan: "premium"
-    });
-  }
-
-  private async createUserIfNotExists(user: InsertUser): Promise<void> {
-    const existingUser = await this.getUserByUsername(user.username);
-    if (!existingUser) {
-      const id = this.currentId++;
-      const newUser: User = { ...user, id };
-      this.users.set(id, newUser);
-    }
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -80,11 +41,71 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getUserByAuth0Id(auth0Id: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.auth0Id === auth0Id,
+    );
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.email === email,
+    );
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
+    // Check if user with same auth0Id or email exists
+    if (insertUser.auth0Id) {
+      const existingAuth0User = await this.getUserByAuth0Id(insertUser.auth0Id);
+      if (existingAuth0User) {
+        throw new Error("User with this Auth0 ID already exists");
+      }
+    }
+
+    if (insertUser.email) {
+      const existingEmailUser = await this.getUserByEmail(insertUser.email);
+      if (existingEmailUser) {
+        throw new Error("User with this email already exists");
+      }
+    }
+
     const id = this.currentId++;
-    const user: User = { ...insertUser, id };
+    const now = new Date();
+    const user: User = {
+      ...insertUser,
+      id,
+      createdAt: now,
+      updatedAt: now,
+      lastLogin: null,
+      metadata: insertUser.metadata || {},
+    };
+
     this.users.set(id, user);
     return user;
+  }
+
+  async updateUser(id: number, updates: Partial<User>): Promise<User> {
+    const user = await this.getUser(id);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const updatedUser: User = {
+      ...user,
+      ...updates,
+      id, // Ensure ID doesn't change
+      updatedAt: new Date(),
+    };
+
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    if (!this.users.has(id)) {
+      throw new Error("User not found");
+    }
+    this.users.delete(id);
   }
 }
 

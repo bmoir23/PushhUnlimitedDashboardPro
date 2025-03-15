@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { auth } from "express-oauth2-jwt-bearer";
-import { User } from "@shared/schema";
+import { auth, JWTPayload } from "express-oauth2-jwt-bearer";
+import { User, Auth0UserProfile } from "@shared/schema";
 import { storage } from "./storage";
 
 // Configure Auth0 JWT validation middleware
@@ -10,7 +10,7 @@ const validateJWT = auth({
   tokenSigningAlg: "RS256",
 });
 
-// Custom interface to include user in Request type
+// Extend Request type to include user
 declare global {
   namespace Express {
     interface Request {
@@ -19,31 +19,40 @@ declare global {
   }
 }
 
+// Extend the JWT payload with Auth0 profile
+interface Auth0JwtPayload extends JWTPayload {
+  sub: string;
+  email?: string;
+  email_verified?: boolean;
+  name?: string;
+  picture?: string;
+  [key: string]: unknown;
+}
+
 // Middleware to attach user data to request
 export async function attachUser(req: Request, res: Response, next: NextFunction) {
   try {
-    const auth0Id = req.auth?.payload.sub;
-    if (!auth0Id) {
+    const payload = req.auth?.payload as Auth0JwtPayload;
+    if (!payload?.sub) {
       return res.status(401).json({ error: "No user ID in token" });
     }
 
-    const user = await storage.getUserByAuth0Id(auth0Id);
+    const user = await storage.getUserByAuth0Id(payload.sub);
     
     if (!user) {
       // Create new user if they don't exist
-      const email = req.auth?.payload.email;
-      const name = req.auth?.payload.name;
-      const picture = req.auth?.payload.picture;
+      const { email, name, picture } = payload;
       
       if (!email) {
         return res.status(400).json({ error: "Email required" });
       }
 
       const newUser = await storage.createUser({
-        auth0Id,
+        auth0Id: payload.sub,
         email,
-        name: name || "",
-        picture: picture || "",
+        name: name || null,
+        picture: picture || null,
+        username: null,
         roles: ["free"],
         plan: "free",
         status: "active",
@@ -74,7 +83,8 @@ export function requireRoles(roles: string[]) {
       return res.status(401).json({ error: "Authentication required" });
     }
 
-    const hasRequiredRole = req.user.roles.some(role => roles.includes(role));
+    const userRoles = req.user.roles as string[];
+    const hasRequiredRole = userRoles.some(role => roles.includes(role));
     if (!hasRequiredRole) {
       return res.status(403).json({ error: "Insufficient permissions" });
     }

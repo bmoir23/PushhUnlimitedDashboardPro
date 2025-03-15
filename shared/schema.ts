@@ -34,10 +34,10 @@ export const users = pgTable("users", {
   name: text("name"),
   username: text("username").unique(),
   picture: text("picture"), // URL to user's profile picture
-  roles: text("roles").array().notNull().default([]),
-  plan: text("plan").notNull().default("free"),
-  status: text("status").notNull().default("pending"),
-  metadata: json("metadata"), // Flexible metadata for user preferences and settings
+  roles: text("roles").array().notNull().$type<UserRole[]>().default([]),
+  plan: text("plan").notNull().$type<UserPlan>().default("free"),
+  status: text("status").notNull().$type<UserStatus>().default("pending"),
+  metadata: json("metadata").$type<Record<string, unknown>>(), // Flexible metadata for user preferences and settings
   lastLogin: timestamp("last_login", { mode: 'date' }),
   createdAt: timestamp("created_at", { mode: 'date' }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date' }).defaultNow().notNull(),
@@ -49,28 +49,42 @@ const UserPlanSchema = z.enum(userPlans);
 const UserStatusSchema = z.enum(userStatuses);
 
 // Schema for inserting new users
-export const insertUserSchema = createInsertSchema(users, {
+export const insertUserSchema = z.object({
+  auth0Id: z.string(),
+  email: z.string().email(),
+  name: z.string().nullable(),
+  username: z.string().nullable(),
+  picture: z.string().nullable(),
   roles: z.array(UserRoleSchema),
   plan: UserPlanSchema,
   status: UserStatusSchema,
-  metadata: z.record(z.any()).optional(),
-}).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
+  metadata: z.record(z.unknown()).default({}),
 });
 
 // Schema for updating user properties
-export const updateUserSchema = createInsertSchema(users, {
+export const updateUserSchema = z.object({
+  auth0Id: z.string().optional(),
+  email: z.string().email().optional(),
+  name: z.string().nullable().optional(),
+  username: z.string().nullable().optional(),
+  picture: z.string().nullable().optional(),
   roles: z.array(UserRoleSchema).optional(),
   plan: UserPlanSchema.optional(),
   status: UserStatusSchema.optional(),
-  metadata: z.record(z.any()).optional(),
-}).omit({
-  id: true,
-  auth0Id: true,
-  createdAt: true,
-}).partial();
+  metadata: z.record(z.unknown()).optional(),
+  lastLogin: z.date().nullable().optional(),
+});
+
+// Auth0 User Profile type
+export interface Auth0UserProfile {
+  sub?: string;
+  email?: string;
+  email_verified?: boolean;
+  name?: string;
+  picture?: string;
+  updated_at?: string;
+  [key: string]: any;
+}
 
 // Export types for use in the application
 export type UserRole = z.infer<typeof UserRoleSchema>;
