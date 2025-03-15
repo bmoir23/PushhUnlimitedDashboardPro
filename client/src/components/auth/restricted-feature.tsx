@@ -1,11 +1,11 @@
 import { ReactNode } from 'react';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth, UserRole } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Link } from 'wouter';
 
 interface RestrictedFeatureProps {
   children: ReactNode;
-  requiredRoles?: string[];
+  requiredRoles?: UserRole[];
   requiredPlan?: string;
   fallback?: ReactNode;
   showUpgrade?: boolean;

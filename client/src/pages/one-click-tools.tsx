@@ -93,7 +93,7 @@ export default function OneClickTools() {
     }, 2500);
   };
   
-  const toolCategories = [...new Set(tools.map(tool => tool.category))];
+  const toolCategories = Array.from(new Set(tools.map(tool => tool.category)));
   
   const getActiveTool = () => tools.find(tool => tool.id === activeToolId);
   

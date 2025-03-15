@@ -50,14 +50,26 @@ function App() {
     ? window.location.origin 
     : 'http://localhost:5000';
 
+  // Check if Auth0 domain and client ID are available
+  const auth0Domain = import.meta.env.VITE_AUTH0_DOMAIN;
+  const auth0ClientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
+  
+  // Log for debugging purposes only
+  console.log("Auth0 Configuration:", { 
+    domainAvailable: !!auth0Domain,
+    clientIdAvailable: !!auth0ClientId,
+    redirectUri
+  });
+  
   return (
     <QueryClientProvider client={queryClient}>
       <Auth0Provider
-        domain={import.meta.env.VITE_AUTH0_DOMAIN || ''}
-        clientId={import.meta.env.VITE_AUTH0_CLIENT_ID || ''}
+        domain={auth0Domain || ''}
+        clientId={auth0ClientId || ''}
         authorizationParams={{
           redirect_uri: redirectUri,
         }}
+        cacheLocation="localstorage"
       >
         <AuthProvider>
           <ErrorBoundary>

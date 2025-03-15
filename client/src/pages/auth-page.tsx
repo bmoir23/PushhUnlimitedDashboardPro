@@ -2,73 +2,46 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { Turnstile } from "@marsidev/react-turnstile";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { isAuthenticated, isLoading, loginWithRedirect } = useAuth();
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileVerified, setTurnstileVerified] = useState(false);
-  const [verifyingTurnstile, setVerifyingTurnstile] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
   const { toast } = useToast();
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
+    console.log("Auth Page - Auth Status:", { isAuthenticated, isLoading });
+    
+    if (isAuthenticated && !isLoading) {
+      console.log("User is authenticated, redirecting to home...");
       setLocation("/");
     }
-  }, [isAuthenticated, setLocation]);
-
-  const verifyTurnstileToken = async (token: string) => {
-    try {
-      setVerifyingTurnstile(true);
-      const response = await apiRequest("POST", "/api/verify-turnstile", { token });
-      const data = await response.json();
-      
-      if (data.success) {
-        setTurnstileVerified(true);
-        return true;
-      } else {
-        toast({
-          title: "Verification Failed",
-          description: "Security check failed. Please try again.",
-          variant: "destructive",
-        });
-        return false;
-      }
-    } catch (error) {
-      console.error("Error verifying Turnstile token:", error);
-      toast({
-        title: "Verification Error",
-        description: "An error occurred during verification. Please try again.",
-        variant: "destructive",
-      });
-      return false;
-    } finally {
-      setVerifyingTurnstile(false);
-    }
-  };
+  }, [isAuthenticated, isLoading, setLocation]);
 
   const handleLogin = async () => {
-    if (turnstileToken) {
-      if (!turnstileVerified) {
-        const verified = await verifyTurnstileToken(turnstileToken);
-        if (!verified) return;
-      }
+    try {
+      setLoggingIn(true);
+      console.log("Initiating Auth0 login with redirect...");
       
+      // For debugging purposes, use a simple login flow without turnstile
       await loginWithRedirect({
         appState: {
-          turnstileToken
+          returnTo: window.location.origin
         }
       });
+    } catch (error) {
+      console.error("Login error:", error);
+      toast({
+        title: "Login Error",
+        description: error instanceof Error ? error.message : "An error occurred during login. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoggingIn(false);
     }
-  };
-
-  const handleTurnstileSuccess = (token: string) => {
-    setTurnstileToken(token);
   };
 
   return (
@@ -102,32 +75,19 @@ export default function AuthPage() {
             <CardHeader>
               <CardTitle>Authentication</CardTitle>
               <CardDescription>
-                Secure login with Auth0 and Cloudflare Turnstile
+                Secure login with Auth0
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="py-2 flex justify-center">
-                <Turnstile
-                  siteKey={import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY}
-                  onSuccess={handleTurnstileSuccess}
-                />
-              </div>
+            <CardContent className="space-y-4 text-center">
+              <p>Click the button below to sign in to your account</p>
             </CardContent>
             <CardFooter>
               <Button
                 className="w-full"
                 onClick={handleLogin}
-                disabled={isLoading || verifyingTurnstile || (!turnstileVerified && !turnstileToken)}
+                disabled={isLoading || loggingIn}
               >
-                {isLoading 
-                  ? "Signing in..." 
-                  : verifyingTurnstile 
-                    ? "Verifying..." 
-                    : turnstileVerified 
-                      ? "Sign in with Auth0" 
-                      : turnstileToken 
-                        ? "Verify and Sign in" 
-                        : "Complete security check"}
+                {isLoading || loggingIn ? "Signing in..." : "Sign in with Auth0"}
               </Button>
             </CardFooter>
           </Card>

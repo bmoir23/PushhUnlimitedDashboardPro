@@ -78,16 +78,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error
   } = useAuth0();
 
-  // Handle auth errors
+  // Handle auth errors and debugging
   useEffect(() => {
     if (error) {
+      console.error("Auth0 Error:", error);
       toast({
         title: "Authentication Error",
-        description: error.message,
+        description: error.message || "An error occurred during authentication.",
         variant: "destructive",
       });
     }
   }, [error, toast]);
+  
+  // Log authentication status for debugging
+  useEffect(() => {
+    console.log("Auth Status:", { 
+      isAuthenticated, 
+      isLoading, 
+      userAvailable: !!user 
+    });
+  }, [isAuthenticated, isLoading, user]);
 
   // Extract user roles and plan from metadata when user changes
   useEffect(() => {

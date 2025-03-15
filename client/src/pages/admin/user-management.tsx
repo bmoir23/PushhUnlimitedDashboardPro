@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Search, MoreHorizontal, Plus, UserPlus, Save, X } from "lucide-react";
-import { UserRole } from "@/lib/auth/use-auth";
+import { UserRole } from "@/hooks/use-auth";
 
 // Mock user data - in a real app, this would come from an API call
 interface AdminUser {
