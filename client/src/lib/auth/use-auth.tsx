@@ -156,3 +156,103 @@ export function useAuth() {
   }
   return context;
 }
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+
+export type UserRole = "user" | "admin" | "superadmin";
+
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  role: UserRole;
+  plan?: string;
+}
+
+interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  hasRole: (role: UserRole) => boolean;
+  hasPlan: (plan: string) => boolean;
+  logout: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Check if user is authenticated
+    const checkAuth = async () => {
+      try {
+        const response = await fetch("/api/user");
+        
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  const hasRole = (role: UserRole) => {
+    if (!user) return false;
+    
+    // Superadmin has access to everything
+    if (user.role === "superadmin") return true;
+    
+    // Admin has access to admin and user roles
+    if (user.role === "admin" && (role === "admin" || role === "user")) return true;
+    
+    // Regular user only has user role
+    return user.role === role;
+  };
+
+  const hasPlan = (plan: string) => {
+    if (!user) return false;
+    return user.plan === plan;
+  };
+
+  const logout = async () => {
+    try {
+      await fetch("/api/logout", { method: "POST" });
+      setUser(null);
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
+  return (
+    <AuthContext.Provider value={{ 
+      user, 
+      isAuthenticated: !!user, 
+      isLoading, 
+      hasRole, 
+      hasPlan,
+      logout
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  
+  return context;
+}
