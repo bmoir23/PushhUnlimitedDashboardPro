@@ -114,8 +114,8 @@ export function Sidebar({ currentPath }: SidebarProps) {
       
       <aside 
         className={cn(
-          "w-full md:w-64 bg-white border-r border-slate-200 flex flex-col md:h-screen",
-          "fixed inset-y-0 left-0 z-40 w-64 transform transition-transform duration-300 ease-in-out md:transform-none md:static",
+          "w-full md:w-64 bg-white border-r border-slate-200 flex flex-col h-full md:h-screen",
+          "fixed inset-y-0 left-0 z-40 w-64 transform transition-transform duration-300 ease-in-out md:transform-none md:relative",
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >

@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 
 export function TopBar() {
   return (
-    <div className="sticky top-0 z-10 bg-background border-b px-4 sm:px-6 py-4">
+    <div className="sticky top-0 z-20 bg-background border-b px-4 sm:px-6 py-4 w-full">
       <div className="flex items-center justify-between">
-        <div className="flex-1 pl-0 md:pl-16 lg:pl-0">
-          <h1 className="text-2xl font-semibold">Pushh Platform</h1>
+        <div className="flex-1 pl-0">
+          <h1 className="text-2xl font-semibold block md:hidden">Pushh Platform</h1>
+          <h1 className="text-xl font-semibold hidden md:block">Dashboard Overview</h1>
         </div>
         <div className="flex items-center ml-4 md:ml-6 space-x-4">
           {/* Search */}
