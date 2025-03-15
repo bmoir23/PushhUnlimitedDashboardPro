@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { getAuthCallbackUrl } from "@/lib/utils";
 
 const signupSchema = z
   .object({
@@ -48,12 +49,13 @@ export function SignupForm() {
           screen_hint: "signup",
           connection: "Username-Password-Authentication",
           login_hint: data.email,
+          redirect_uri: getAuthCallbackUrl(),
         },
         appState: {
           email: data.email,
           password: data.password,
           name: data.name,
-          returnTo: window.location.origin,
+          returnTo: "/",
         },
       });
     } catch (err) {
