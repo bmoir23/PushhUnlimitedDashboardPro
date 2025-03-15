@@ -1,13 +1,12 @@
 import { Search, Bell, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { UserProfile } from "@/components/auth/user-profile";
 
 export function TopBar() {
   return (
     <div className="sticky top-0 z-10 bg-background border-b px-4 sm:px-6 py-4">
       <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
+        <div className="flex-1 pl-0 md:pl-16 lg:pl-0">
+          <h1 className="text-2xl font-semibold">Pushh Platform</h1>
         </div>
         <div className="flex items-center ml-4 md:ml-6 space-x-4">
           {/* Search */}
@@ -32,9 +31,6 @@ export function TopBar() {
           <Button variant="ghost" size="icon">
             <HelpCircle className="h-5 w-5" />
           </Button>
-
-          {/* User Profile Dropdown */}
-          <UserProfile />
         </div>
       </div>
     </div>
