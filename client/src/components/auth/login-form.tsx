@@ -9,10 +9,11 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 const loginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().email("Valid email is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -21,6 +22,7 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [_, setLocation] = useLocation();
+  const { loginWithEmail } = useAuth();
 
   const {
     register,
@@ -35,22 +37,13 @@ export function LoginForm() {
     setError(null);
 
     try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to login");
+      const { error } = await loginWithEmail(data.email, data.password);
+      
+      if (error) {
+        throw error;
       }
 
-      // Redirect to home page on successful login
-      setLocation("/");
+      // Redirect will be handled by the auth state change in useAuth
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred during login");
     } finally {
@@ -67,15 +60,16 @@ export function LoginForm() {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="username">Username</Label>
+        <Label htmlFor="email">Email</Label>
         <Input
-          id="username"
-          placeholder="Enter your username"
-          {...register("username")}
-          className={errors.username ? "border-red-500" : ""}
+          id="email"
+          type="email"
+          placeholder="name@example.com"
+          {...register("email")}
+          className={errors.email ? "border-red-500" : ""}
         />
-        {errors.username && (
-          <p className="text-sm text-red-500">{errors.username.message}</p>
+        {errors.email && (
+          <p className="text-sm text-red-500">{errors.email.message}</p>
         )}
       </div>
 
@@ -84,7 +78,7 @@ export function LoginForm() {
         <Input
           id="password"
           type="password"
-          placeholder="Enter your password"
+          placeholder="••••••••"
           {...register("password")}
           className={errors.password ? "border-red-500" : ""}
         />

@@ -9,11 +9,13 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Loader2 } from "lucide-react";
+import { useAuth, UserMetadata } from "@/hooks/use-auth";
 
 const registerSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   email: z.string().email("Please enter a valid email"),
+  name: z.string().min(2, "Name must be at least 2 characters").optional(),
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -21,7 +23,8 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 export function RegisterForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [_, setLocation] = useLocation();
+  const [success, setSuccess] = useState(false);
+  const { signUpWithEmail } = useAuth();
 
   const {
     register,
@@ -29,29 +32,32 @@ export function RegisterForm() {
     formState: { errors },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
+    defaultValues: {
+      name: "",
+    }
   });
 
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true);
     setError(null);
+    setSuccess(false);
 
     try {
-      const response = await fetch("/api/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
+      // Prepare user metadata
+      const metadata: UserMetadata = {
+        name: data.name || data.username,
+        roles: ["free"],
+        plan: "free",
+      };
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to register");
+      const { error } = await signUpWithEmail(data.email, data.password, metadata);
+      
+      if (error) {
+        throw error;
       }
 
-      // Redirect to home page on successful registration
-      setLocation("/");
+      // Show success message - a confirmation email might have been sent
+      setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred during registration");
     } finally {
@@ -67,11 +73,32 @@ export function RegisterForm() {
         </Alert>
       )}
 
+      {success && (
+        <Alert>
+          <AlertDescription>
+            Registration successful! Please check your email for a confirmation link.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div className="space-y-2">
+        <Label htmlFor="name">Full Name</Label>
+        <Input
+          id="name"
+          placeholder="John Doe"
+          {...register("name")}
+          className={errors.name ? "border-red-500" : ""}
+        />
+        {errors.name && (
+          <p className="text-sm text-red-500">{errors.name.message}</p>
+        )}
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="username">Username</Label>
         <Input
           id="username"
-          placeholder="Choose a username"
+          placeholder="johndoe"
           {...register("username")}
           className={errors.username ? "border-red-500" : ""}
         />
@@ -85,7 +112,7 @@ export function RegisterForm() {
         <Input
           id="email"
           type="email"
-          placeholder="Enter your email"
+          placeholder="name@example.com"
           {...register("email")}
           className={errors.email ? "border-red-500" : ""}
         />
@@ -99,7 +126,7 @@ export function RegisterForm() {
         <Input
           id="password"
           type="password"
-          placeholder="Create a password"
+          placeholder="••••••••"
           {...register("password")}
           className={errors.password ? "border-red-500" : ""}
         />
