@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+import { SocialLogins } from "@/components/auth/social-logins";
+import { EmailPasswordLogin } from "@/components/auth/email-password-login";
+import { SignupForm } from "@/components/auth/signup-form";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
-  const { isAuthenticated, isLoading, loginWithRedirect } = useAuth();
-  const [loggingIn, setLoggingIn] = useState(false);
+  const { isAuthenticated, isLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState("login");
   const { toast } = useToast();
 
   // Redirect if already authenticated
@@ -21,31 +25,9 @@ export default function AuthPage() {
     }
   }, [isAuthenticated, isLoading, setLocation]);
 
-  const handleLogin = async () => {
-    try {
-      setLoggingIn(true);
-      console.log("Initiating Auth0 login with redirect...");
-      
-      // For debugging purposes, use a simple login flow without turnstile
-      await loginWithRedirect({
-        appState: {
-          returnTo: window.location.origin
-        }
-      });
-    } catch (error) {
-      console.error("Login error:", error);
-      toast({
-        title: "Login Error",
-        description: error instanceof Error ? error.message : "An error occurred during login. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoggingIn(false);
-    }
-  };
-
   return (
-    <div className="container relative h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
+    <div className="container relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
+      {/* Left Side - Hero Section */}
       <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
         <div className="absolute inset-0 bg-zinc-900" />
         <div className="relative z-20 flex items-center text-lg font-medium">
@@ -60,40 +42,59 @@ export default function AuthPage() {
           </blockquote>
         </div>
       </div>
-      <div className="lg:p-8">
-        <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
+
+      {/* Right Side - Auth Form */}
+      <div className="lg:p-8 py-10">
+        <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
           <div className="flex flex-col space-y-2 text-center">
             <h1 className="text-2xl font-semibold tracking-tight">
               Welcome to Pushh Platform
             </h1>
             <p className="text-sm text-muted-foreground">
-              Sign in to get started
+              Sign in to get started with your account
             </p>
           </div>
           
-          <Card>
+          <Card className="border-none shadow-md">
             <CardHeader>
-              <CardTitle>Authentication</CardTitle>
-              <CardDescription>
-                Secure login with Auth0
+              <CardTitle className="text-center">Authentication</CardTitle>
+              <CardDescription className="text-center">
+                Choose your preferred sign-in method
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 text-center">
-              <p>Click the button below to sign in to your account</p>
+            <CardContent className="pb-4">
+              {/* Social Login Options */}
+              <div className="mb-6">
+                <SocialLogins />
+              </div>
+              
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <Separator />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                </div>
+              </div>
+
+              {/* Email/Password Login and Signup */}
+              <Tabs defaultValue="login" className="mt-6" onValueChange={setActiveTab} value={activeTab}>
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="login">Login</TabsTrigger>
+                  <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                </TabsList>
+                <TabsContent value="login">
+                  <EmailPasswordLogin />
+                </TabsContent>
+                <TabsContent value="signup">
+                  <SignupForm />
+                </TabsContent>
+              </Tabs>
             </CardContent>
-            <CardFooter>
-              <Button
-                className="w-full"
-                onClick={handleLogin}
-                disabled={isLoading || loggingIn}
-              >
-                {isLoading || loggingIn ? "Signing in..." : "Sign in with Auth0"}
-              </Button>
-            </CardFooter>
           </Card>
           
           <p className="text-center text-sm text-muted-foreground">
-            By clicking continue, you agree to our{" "}
+            By continuing, you agree to our{" "}
             <a href="#" className="underline underline-offset-4 hover:text-primary">
               Terms of Service
             </a>{" "}
