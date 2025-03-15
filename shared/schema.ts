@@ -26,19 +26,44 @@ export const userStatuses = [
   "suspended",
 ] as const;
 
-// User table with Auth0 integration
+// User table with Supabase integration
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  auth0Id: text("auth0_id").unique(), // Auth0 user ID for external authentication
+  authId: text("auth_id").unique(), // Supabase user UUID
   email: text("email").notNull().unique(),
   name: text("name"),
   username: text("username").unique(),
   picture: text("picture"), // URL to user's profile picture
-  roles: text("roles").array().notNull().$type<UserRole[]>().default([]),
+  roles: text("roles").array().notNull().$type<UserRole[]>().default(["free"]),
   plan: text("plan").notNull().$type<UserPlan>().default("free"),
-  status: text("status").notNull().$type<UserStatus>().default("pending"),
-  metadata: json("metadata").$type<Record<string, unknown>>(), // Flexible metadata for user preferences and settings
+  status: text("status").notNull().$type<UserStatus>().default("active"),
+  metadata: json("metadata").$type<Record<string, unknown>>().default({}), // Flexible metadata for user preferences and settings
   lastLogin: timestamp("last_login", { mode: 'date' }),
+  createdAt: timestamp("created_at", { mode: 'date' }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'date' }).defaultNow().notNull(),
+});
+
+// Projects table - for storing user projects
+export const projects = pgTable("projects", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("active"), // active, archived, completed
+  metadata: json("metadata").$type<Record<string, unknown>>().default({}),
+  createdAt: timestamp("created_at", { mode: 'date' }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'date' }).defaultNow().notNull(),
+});
+
+// Integrations table - for storing user's external integrations
+export const integrations = pgTable("integrations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  type: text("type").notNull(), // e.g., "airtable", "zendesk", "intercom", "segment"
+  name: text("name").notNull(),
+  config: json("config").$type<Record<string, unknown>>().default({}),
+  status: text("status").notNull().default("connected"), // connected, disconnected, pending
+  lastSynced: timestamp("last_synced", { mode: 'date' }),
   createdAt: timestamp("created_at", { mode: 'date' }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: 'date' }).defaultNow().notNull(),
 });
@@ -50,20 +75,19 @@ const UserStatusSchema = z.enum(userStatuses);
 
 // Schema for inserting new users
 export const insertUserSchema = z.object({
-  auth0Id: z.string(),
+  authId: z.string(),
   email: z.string().email(),
   name: z.string().nullable(),
   username: z.string().nullable(),
   picture: z.string().nullable(),
-  roles: z.array(UserRoleSchema),
-  plan: UserPlanSchema,
-  status: UserStatusSchema,
+  roles: z.array(UserRoleSchema).default(["free"]),
+  plan: UserPlanSchema.default("free"),
+  status: UserStatusSchema.default("active"),
   metadata: z.record(z.unknown()).default({}),
 });
 
 // Schema for updating user properties
 export const updateUserSchema = z.object({
-  auth0Id: z.string().optional(),
   email: z.string().email().optional(),
   name: z.string().nullable().optional(),
   username: z.string().nullable().optional(),
@@ -75,14 +99,36 @@ export const updateUserSchema = z.object({
   lastLogin: z.date().nullable().optional(),
 });
 
-// Auth0 User Profile type
-export interface Auth0UserProfile {
-  sub?: string;
+// Schema for inserting new projects
+export const insertProjectSchema = z.object({
+  userId: z.number(),
+  name: z.string(),
+  description: z.string().nullable(),
+  status: z.string().default("active"),
+  metadata: z.record(z.unknown()).default({}),
+});
+
+// Schema for inserting new integrations
+export const insertIntegrationSchema = z.object({
+  userId: z.number(),
+  type: z.string(),
+  name: z.string(),
+  config: z.record(z.unknown()).default({}),
+  status: z.string().default("connected"),
+});
+
+// Supabase User Profile type
+export interface SupabaseUserProfile {
+  id: string;
   email?: string;
-  email_verified?: boolean;
-  name?: string;
-  picture?: string;
-  updated_at?: string;
+  user_metadata?: {
+    name?: string;
+    picture?: string;
+    roles?: UserRole[];
+    plan?: string;
+    [key: string]: any;
+  };
+  app_metadata?: Record<string, unknown>;
   [key: string]: any;
 }
 
@@ -92,4 +138,8 @@ export type UserPlan = z.infer<typeof UserPlanSchema>;
 export type UserStatus = z.infer<typeof UserStatusSchema>;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
+export type InsertProject = z.infer<typeof insertProjectSchema>;
+export type InsertIntegration = z.infer<typeof insertIntegrationSchema>;
 export type User = typeof users.$inferSelect;
+export type Project = typeof projects.$inferSelect;
+export type Integration = typeof integrations.$inferSelect;
