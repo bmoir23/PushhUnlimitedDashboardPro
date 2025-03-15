@@ -1,0 +1,31 @@
+Create a Next.js dashboard using Shadcn/ui components with a modern, clean, and responsive design. The dashboard will have a fixed left sidebar navigation menu and a main content area. Implement the following pages in the sidebar:
+
+Sidebar Pages:
+	•	Home Page: Include widgets or quick-access cards summarizing overview information from each dashboard section.
+	•	Projects / Campaigns: For creating, managing, and monitoring project or campaign progress.
+	•	Projects/Campaign Creation & Monitoring: Page for creating new projects or campaigns and monitoring existing ones.
+	•	Nexus (active demo page): Fully interactive page showcasing AI-based interactions and functionalities.
+	•	One-Click Tools (active demo page): Fully interactive page demonstrating streamlined tool access and simplified workflows.
+	•	Analytics & Monitoring: Page with reports from Mixpanel, PostHog, and Amplitude integrations.
+	•	Profile: User-specific settings and preferences.
+	•	Social & 3rd Party Integrations: Page showcasing integrations with platforms such as Airtable, Zendesk, Intercom, and Segment.
+	•	Projects & Campaign Creation: Management and status tracking for user-created projects or campaigns.
+	•	Socials and 3rd Party Integrations Hub: Overview of active integrations and connection statuses.
+	•	Profile: User settings and profile management.
+	•	Admin Panel: Restricted area with team management, enterprise account settings, and API/token management.
+	•	Documentation & API Links: Links redirecting to the main website, API documentation, and external resources.
+
+Interactive Demo Requirements:
+	•	All sidebar pages should be visible but greyed out and disabled (non-clickable), clearly indicating demo status, except for Nexus and One-Click Tools, which should be fully interactive.
+	•	On the Home Page, create quick-access widgets/cards displaying summarized overview data pulled from each major page. These cards should be styled using Shadcn’s card components.
+	•	Implement robust error handling across all components, routes, API interactions, and integrations. Utilize React Error Boundaries for component-level errors, provide clear and user-friendly feedback for server and network issues, and ensure accessible loading states to enhance user experience.
+	•	Include mock data for demonstrations.
+
+Technical Stack & Integration Points:
+	•	Next.js with latest version and App Router structure
+	•	Shadcn/ui for UI components
+	•	TailwindCSS for styling
+	•	Segment analytics integration
+	•	Monitoring integration placeholders for Mixpanel, PostHog, Amplitude
+
+Ensure the codebase follows industry best practices, includes thorough inline documentation, and is structured clearly for maintainability and scalability. Implement error boundaries and ensure secure API handling.
