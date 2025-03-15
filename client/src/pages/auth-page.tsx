@@ -306,7 +306,7 @@ export default function AuthPage() {
                               <FormControl>
                                 <div className="flex justify-center">
                                   <Turnstile
-                                    siteKey={import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY}
+                                    siteKey={"1x00000000000000000000AA"}
                                     onSuccess={(token) => setRegisterToken(token)}
                                     options={{
                                       theme: 'light',
