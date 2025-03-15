@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { getAuthCallbackUrl } from "@/lib/utils";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -40,9 +41,10 @@ export function EmailPasswordLogin() {
         authorizationParams: {
           connection: "Username-Password-Authentication",
           login_hint: data.email,
+          redirect_uri: getAuthCallbackUrl(),
         },
         appState: {
-          returnTo: window.location.origin,
+          returnTo: "/",
         },
       });
     } catch (err) {
@@ -103,6 +105,7 @@ export function EmailPasswordLogin() {
             loginWithRedirect({
               authorizationParams: {
                 screen_hint: "forgotPassword",
+                redirect_uri: getAuthCallbackUrl(),
               },
             });
           }}

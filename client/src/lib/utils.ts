@@ -25,9 +25,9 @@ export function isDemoPage(path: string): boolean {
 export function getAuthCallbackUrl(): string {
   // For local development
   if (window.location.hostname === 'localhost') {
-    return window.location.origin;
+    return `${window.location.origin}/auth`;
   }
   
   // For production (auth.usepushh.cc)
-  return `${window.location.origin}`;
+  return `${window.location.origin}/auth`;
 }

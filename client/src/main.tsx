@@ -23,8 +23,10 @@ createRoot(document.getElementById("root")!).render(
     authorizationParams={{
       redirect_uri: getAuthCallbackUrl(),
       audience: auth0Audience,
+      scope: "openid profile email",
     }}
     cacheLocation="localstorage"
+    useRefreshTokens={true}
   >
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="system" storageKey="pushh-theme">

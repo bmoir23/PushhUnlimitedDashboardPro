@@ -21,6 +21,7 @@ export function SocialLogins({ className = "" }: SocialLoginProps) {
       await loginWithRedirect({
         authorizationParams: {
           connection,
+          redirect_uri: getAuthCallbackUrl(),
         },
         appState: {
           returnTo: "/",
