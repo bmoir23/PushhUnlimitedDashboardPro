@@ -1,14 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, ArrowRight, CheckCircle } from "lucide-react";
+import { Loader2, ArrowRight, CheckCircle, Shield } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Turnstile } from "@marsidev/react-turnstile";
 import {
   Form,
   FormControl,
@@ -19,11 +20,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { UserRole, UserPlan } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
 
 // Create login schema
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
+  turnstileToken: z.string().min(1, "Please complete the security check")
 });
 
 // Create registration schema
@@ -33,6 +36,7 @@ const registerSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
   roles: z.array(z.enum(["free", "basic", "premium", "enterprise", "admin", "superadmin"] as const)).default(["free"]),
   plan: z.enum(["free", "basic", "premium", "enterprise"] as const).default("free"),
+  turnstileToken: z.string().min(1, "Please complete the security check")
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -42,6 +46,9 @@ export default function AuthPage() {
   const { user, isLoading, loginMutation, registerMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<string>("login");
+  const [loginToken, setLoginToken] = useState<string>("");
+  const [registerToken, setRegisterToken] = useState<string>("");
+  const { toast } = useToast();
   
   // Redirect to home if already authenticated
   useEffect(() => {
@@ -56,6 +63,7 @@ export default function AuthPage() {
     defaultValues: {
       username: "",
       password: "",
+      turnstileToken: ""
     },
   });
 
@@ -68,19 +76,52 @@ export default function AuthPage() {
       password: "",
       roles: ["free"] as UserRole[],
       plan: "free" as UserPlan,
+      turnstileToken: ""
     },
   });
 
+  // Update form values when Turnstile tokens change
+  useEffect(() => {
+    if (loginToken) {
+      loginForm.setValue("turnstileToken", loginToken);
+    }
+    if (registerToken) {
+      registerForm.setValue("turnstileToken", registerToken);
+    }
+  }, [loginToken, registerToken, loginForm, registerForm]);
+
   // Handle login submission
   const onLoginSubmit = (data: LoginFormValues) => {
-    loginMutation.mutate(data);
+    if (!data.turnstileToken) {
+      toast({
+        title: "Security check required",
+        description: "Please complete the security check before logging in",
+        variant: "destructive"
+      });
+      return;
+    }
+    loginMutation.mutate({
+      username: data.username,
+      password: data.password
+    });
   };
 
   // Handle registration submission
   const onRegisterSubmit = (data: RegisterFormValues) => {
+    if (!data.turnstileToken) {
+      toast({
+        title: "Security check required",
+        description: "Please complete the security check before registering",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     // Ensure we have properly typed data for the mutation
     const userData = {
-      ...data,
+      username: data.username,
+      email: data.email,
+      password: data.password,
       roles: data.roles as UserRole[],
       plan: data.plan as UserPlan
     };
@@ -101,7 +142,7 @@ export default function AuthPage() {
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold tracking-tight">Pushh</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Pushh Platform</h1>
             <p className="text-muted-foreground mt-2">AI-powered dashboard for modern teams</p>
           </div>
 
@@ -152,6 +193,34 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
+                      
+                      <div className="pt-2 pb-4">
+                        <FormField
+                          control={loginForm.control}
+                          name="turnstileToken"
+                          render={() => (
+                            <FormItem>
+                              <FormLabel className="flex items-center mb-2">
+                                <Shield className="h-4 w-4 mr-1" />
+                                Security Check
+                              </FormLabel>
+                              <FormControl>
+                                <div className="flex justify-center">
+                                  <Turnstile
+                                    siteKey={import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY}
+                                    onSuccess={(token) => setLoginToken(token)}
+                                    options={{
+                                      theme: 'light',
+                                    }}
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
                       <Button 
                         type="submit" 
                         className="w-full"
@@ -168,7 +237,7 @@ export default function AuthPage() {
                   </Form>
                 </CardContent>
                 <CardFooter className="flex justify-center text-sm text-muted-foreground">
-                  Secure authentication powered by Pushh
+                  Secure authentication powered by Pushh Platform
                 </CardFooter>
               </Card>
             </TabsContent>
@@ -178,7 +247,7 @@ export default function AuthPage() {
                 <CardHeader>
                   <CardTitle>Create an account</CardTitle>
                   <CardDescription>
-                    Get started with Pushh today
+                    Get started with Pushh Platform today
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -223,6 +292,34 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
+                      
+                      <div className="pt-2 pb-4">
+                        <FormField
+                          control={registerForm.control}
+                          name="turnstileToken"
+                          render={() => (
+                            <FormItem>
+                              <FormLabel className="flex items-center mb-2">
+                                <Shield className="h-4 w-4 mr-1" />
+                                Security Check
+                              </FormLabel>
+                              <FormControl>
+                                <div className="flex justify-center">
+                                  <Turnstile
+                                    siteKey={import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY}
+                                    onSuccess={(token) => setRegisterToken(token)}
+                                    options={{
+                                      theme: 'light',
+                                    }}
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
                       <Button 
                         type="submit" 
                         className="w-full"
@@ -254,7 +351,7 @@ export default function AuthPage() {
             Simplify your workflow with AI-powered tools
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
-            Pushh helps teams streamline their operations with advanced AI capabilities, integrated monitoring, and powerful analysis tools.
+            Pushh Platform helps teams streamline their operations with advanced AI capabilities, integrated monitoring, and powerful analysis tools.
           </p>
           
           <div className="space-y-4">
