@@ -4,7 +4,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
-import { ThemeProvider, ThemeToggle } from "@/components/theme-provider"; // Added ThemeToggle
+import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 // Pages
 import Home from "./pages/home";
