@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
@@ -38,7 +37,7 @@ export function LoginForm() {
 
     try {
       const { error } = await loginWithEmail(data.email, data.password);
-      
+
       if (error) {
         throw error;
       }
@@ -52,7 +51,8 @@ export function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 bg-card p-6 rounded-lg shadow-md">
+      <h2 className="text-2xl font-semibold text-card-foreground">Login</h2>
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
