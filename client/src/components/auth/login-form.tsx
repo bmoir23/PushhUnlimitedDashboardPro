@@ -52,7 +52,12 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 bg-card p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-semibold text-card-foreground">Login</h2>
+      <div className="space-y-2 text-center">
+        <h1 className="text-3xl font-bold text-foreground">Login</h1>
+        <p className="text-muted-foreground">
+          Enter your credentials to access your account
+        </p>
+      </div>
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>

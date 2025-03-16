@@ -78,20 +78,20 @@ export function UserProfileCard() {
 
           {user.username && (
             <div>
-              <h3 className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-slate-500'} mb-1`}>Username</h3>
-              <p className={`font-medium ${isDarkMode ? 'text-gray-200' : ''}`}>@{user.username}</p>
+              <h3 className="text-sm font-medium text-muted-foreground mb-1">Username</h3>
+              <p className="font-medium text-foreground">@{user.username}</p>
             </div>
           )}
 
           <div>
-            <h3 className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-slate-500'} mb-1`}>Status</h3>
+            <h3 className="text-sm font-medium text-muted-foreground mb-1">Status</h3>
             <Badge className={user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'}>
               {user.status?.charAt(0).toUpperCase() + user.status?.slice(1) || 'Unknown'}
             </Badge>
           </div>
         </div>
       </CardContent>
-      <CardFooter className={`border-t pt-4 flex justify-between ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+      <CardFooter className="border-t border-border pt-4 flex justify-between">
         <Button variant="outline">Edit Profile</Button>
         <Button variant="outline" className="text-red-600 hover:text-red-800 hover:bg-red-50">Logout</Button>
       </CardFooter>
