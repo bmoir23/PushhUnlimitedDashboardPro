@@ -20,12 +20,12 @@ import NotFound from "./pages/not-found";
 import { queryClient } from "@/lib/queryClient";
 
 function Router() {
-  const location = useLocation();
+  const [location] = useLocation();
   const showFullLayout = !location.startsWith('/auth');
 
   return (
     <>
-      {showFullLayout && <Sidebar currentPath={location} />}
+      {showFullLayout && <Sidebar currentPath={location.toString()} />}
       <Switch>
         {/* Public Routes */}
         <Route path="/auth" component={AuthPage} />
@@ -52,7 +52,7 @@ function Router() {
 }
 
 function App() {
-  const location = useLocation();
+  const [location] = useLocation();
   const showFullLayout = !location.startsWith('/auth');
 
   return (
@@ -63,7 +63,7 @@ function App() {
             <div className="min-h-screen flex flex-col bg-background"> {/* Added bg-background */}
               {showFullLayout ? (
                 <div className="flex">
-                  <Sidebar currentPath={location} />
+                  <Sidebar currentPath={location.toString()} />
                   <div className="flex-1 transition-all duration-300 md:ml-16 lg:ml-64 min-h-screen">
                     <div className="flex justify-end p-4 border-b border-border">
                       <ThemeToggle />
